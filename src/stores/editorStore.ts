@@ -7,7 +7,6 @@ import {
   PackageManager,
 } from "almostnode";
 import type { ServerBridge } from "almostnode";
-import JSZip from "jszip";
 
 export interface FileTab {
   path: string;
@@ -43,7 +42,8 @@ interface EditorState {
   installMessage: string;
 
   // Actions
-  initVfs: () => void;
+  initVfs: (files?: Record<string, string>) => void;
+  resetProject: () => void;
   loadFile: (path: string) => void;
   saveFile: () => void;
   updateEditorContent: (content: string) => void;
@@ -51,7 +51,6 @@ interface EditorState {
   startPreview: (iframeEl: HTMLIFrameElement) => Promise<void>;
   installPackage: (packageSpec: string) => Promise<void>;
   refreshInstalledPackages: () => void;
-  exportProject: () => Promise<void>;
 }
 
 const defaultFiles: FileTab[] = [
@@ -77,33 +76,92 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
   isInstalling: false,
   installMessage: "",
 
-  initVfs: () => {
+  initVfs: (files?: Record<string, string>) => {
     const vfs = new VirtualFS();
-    vfs.mkdirSync("/app/about", { recursive: true });
 
-    // package.json for dependency tracking
-    vfs.writeFileSync(
-      "/package.json",
-      JSON.stringify(
-        {
-          name: "my-nextjs-app",
-          version: "1.0.0",
-          private: true,
-          scripts: {
-            dev: "next dev",
-            build: "next build",
-            start: "next start",
+    if (files) {
+      // Load existing project files from disk
+      for (const [path, content] of Object.entries(files)) {
+        const dir = path.substring(0, path.lastIndexOf("/"));
+        if (dir) {
+          try {
+            vfs.mkdirSync(dir, { recursive: true });
+          } catch {
+            // directory may already exist
+          }
+        }
+        vfs.writeFileSync(path, content);
+      }
+
+      const pkgManager = new PackageManager(vfs);
+      const state = get();
+      const firstFile = state.currentFile;
+      const content = (() => {
+        try {
+          return vfs.readFileSync(firstFile, "utf8") as string;
+        } catch {
+          return "";
+        }
+      })();
+
+      // Build file tabs from loaded files (excluding node_modules, .next)
+      const tabEntries: FileTab[] = [];
+      const walkVfs = (dir: string) => {
+        const entries = vfs.readdirSync(dir);
+        for (const name of entries) {
+          const fullPath = dir === "/" ? `/${name}` : `${dir}/${name}`;
+          if (name === "node_modules" || name === ".next") continue;
+          try {
+            const stat = vfs.statSync(fullPath);
+            if (stat.isDirectory()) {
+              walkVfs(fullPath);
+            } else {
+              tabEntries.push({
+                path: fullPath,
+                label: fullPath.split("/").slice(2).join("/") || name,
+              });
+            }
+          } catch {
+            // skip entries that can't be stated
+          }
+        }
+      };
+      walkVfs("/");
+
+      set({
+        vfs,
+        pkgManager,
+        editorContent: content,
+        files: tabEntries.length > 0 ? tabEntries : defaultFiles,
+        currentFile: tabEntries.length > 0 ? tabEntries[0].path : firstFile,
+        installedPackages: {},
+      });
+    } else {
+      // Create new project with defaults
+      vfs.mkdirSync("/app/about", { recursive: true });
+
+      vfs.writeFileSync(
+        "/package.json",
+        JSON.stringify(
+          {
+            name: "my-nextjs-app",
+            version: "1.0.0",
+            private: true,
+            scripts: {
+              dev: "next dev",
+              build: "next build",
+              start: "next start",
+            },
+            dependencies: {},
           },
-          dependencies: {},
-        },
-        null,
-        2,
-      ),
-    );
+          null,
+          2,
+        ),
+      );
 
-    vfs.writeFileSync(
-      "/app/layout.tsx",
-      `export default function RootLayout({ children }: { children: React.ReactNode }) {
+      vfs.writeFileSync(
+        "/app/layout.tsx",
+        `export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body style={{ fontFamily: 'system-ui, sans-serif', margin: 0, padding: 16 }}>
@@ -117,11 +175,11 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
   );
 }
 `,
-    );
+      );
 
-    vfs.writeFileSync(
-      "/app/page.tsx",
-      `'use client';
+      vfs.writeFileSync(
+        "/app/page.tsx",
+        `'use client';
 import { useState } from 'react';
 
 export default function Home() {
@@ -135,21 +193,45 @@ export default function Home() {
   );
 }
 `,
-    );
+      );
 
-    vfs.writeFileSync(
-      "/app/about/page.tsx",
-      `export default function About() {
+      vfs.writeFileSync(
+        "/app/about/page.tsx",
+        `export default function About() {
   return <h1>About</h1>;
 }
 `,
-    );
+      );
 
-    const pkgManager = new PackageManager(vfs);
-    const currentFile = get().currentFile;
-    const content = vfs.readFileSync(currentFile, "utf8") as string;
+      const pkgManager = new PackageManager(vfs);
+      const currentFile = get().currentFile;
+      const content = vfs.readFileSync(currentFile, "utf8") as string;
 
-    set({ vfs, pkgManager, editorContent: content });
+      set({ vfs, pkgManager, editorContent: content });
+    }
+  },
+
+  resetProject: () => {
+    const { devServer } = get();
+    if (devServer) {
+      devServer.stop();
+    }
+    set({
+      vfs: null,
+      devServer: null,
+      bridge: null,
+      serverUrl: "",
+      pkgManager: null,
+      files: defaultFiles,
+      currentFile: defaultFiles[0].path,
+      editorContent: "",
+      isPreviewRunning: false,
+      isPreviewLoading: false,
+      hmrLogs: [],
+      installedPackages: {},
+      isInstalling: false,
+      installMessage: "",
+    });
   },
 
   loadFile: (path: string) => {
@@ -163,7 +245,11 @@ export default function Home() {
     const { vfs, currentFile, editorContent } = get();
     if (!vfs) return;
     vfs.writeFileSync(currentFile, editorContent);
-    // HMR triggers automatically — devServer watches the VFS
+
+    // Sync to disk asynchronously (fire-and-forget)
+    import("./workspaceStore").then(({ useWorkspaceStore }) => {
+      useWorkspaceStore.getState().syncFileToDisk(currentFile, editorContent);
+    });
   },
 
   updateEditorContent: (content: string) => {
@@ -248,39 +334,5 @@ export default function Home() {
     const { pkgManager } = get();
     if (!pkgManager) return;
     set({ installedPackages: pkgManager.list() });
-  },
-
-  exportProject: async () => {
-    const { vfs } = get();
-    if (!vfs) return;
-
-    const zip = new JSZip();
-
-    const walk = (dir: string) => {
-      const entries = vfs.readdirSync(dir);
-      for (const name of entries) {
-        const fullPath = dir === "/" ? `/${name}` : `${dir}/${name}`;
-        const stat = vfs.statSync(fullPath);
-        if (stat.isDirectory()) {
-          walk(fullPath);
-        } else {
-          const content = vfs.readFileSync(fullPath, "utf8") as string;
-          // Remove leading slash for zip paths
-          zip.file(fullPath.slice(1), content);
-        }
-      }
-    };
-
-    walk("/");
-
-    const blob = await zip.generateAsync({ type: "blob" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "project.zip";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
   },
 }));

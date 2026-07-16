@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useRef, useCallback } from 'react';
 import { useEditorStore } from '../stores/editorStore';
 import { FileTabs } from './FileTabs';
 import { DependenciesPanel } from './DependenciesPanel';
@@ -7,12 +7,7 @@ export function EditorPanel() {
   const editorContent = useEditorStore((s) => s.editorContent);
   const updateEditorContent = useEditorStore((s) => s.updateEditorContent);
   const saveFile = useEditorStore((s) => s.saveFile);
-  const initVfs = useEditorStore((s) => s.initVfs);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  useEffect(() => {
-    initVfs();
-  }, [initVfs]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
