@@ -1,6 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { create } from "zustand";
-import { VirtualFS, getServerBridge, NextDevServer } from "almostnode";
+import {
+  VirtualFS,
+  getServerBridge,
+  NextDevServer,
+  PackageManager,
+} from "almostnode";
 import type { ServerBridge } from "almostnode";
 
 export interface FileTab {
@@ -19,6 +24,7 @@ interface EditorState {
   devServer: NextDevServer | null;
   bridge: ServerBridge | null;
   serverUrl: string;
+  pkgManager: PackageManager | null;
 
   // File state
   files: FileTab[];
@@ -30,6 +36,11 @@ interface EditorState {
   isPreviewLoading: boolean;
   hmrLogs: HmrLog[];
 
+  // Package state
+  installedPackages: Record<string, string>;
+  isInstalling: boolean;
+  installMessage: string;
+
   // Actions
   initVfs: () => void;
   loadFile: (path: string) => void;
@@ -37,12 +48,15 @@ interface EditorState {
   updateEditorContent: (content: string) => void;
   setCurrentFile: (path: string) => void;
   startPreview: (iframeEl: HTMLIFrameElement) => Promise<void>;
+  installPackage: (packageSpec: string) => Promise<void>;
+  refreshInstalledPackages: () => void;
 }
 
 const defaultFiles: FileTab[] = [
   { path: "/app/page.tsx", label: "page.tsx" },
   { path: "/app/layout.tsx", label: "layout.tsx" },
   { path: "/app/about/page.tsx", label: "about/page.tsx" },
+  { path: "/package.json", label: "package.json" },
 ];
 
 export const useEditorStore = create<EditorState>()((set, get) => ({
@@ -50,30 +64,54 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
   devServer: null,
   bridge: null,
   serverUrl: "",
+  pkgManager: null,
   files: defaultFiles,
   currentFile: defaultFiles[0].path,
   editorContent: "",
   isPreviewRunning: false,
   isPreviewLoading: false,
   hmrLogs: [],
+  installedPackages: {},
+  isInstalling: false,
+  installMessage: "",
 
   initVfs: () => {
     const vfs = new VirtualFS();
     vfs.mkdirSync("/app/about", { recursive: true });
 
+    // package.json for dependency tracking
+    vfs.writeFileSync(
+      "/package.json",
+      JSON.stringify(
+        {
+          name: "my-nextjs-app",
+          version: "1.0.0",
+          private: true,
+          scripts: {
+            dev: "next dev",
+            build: "next build",
+            start: "next start",
+          },
+          dependencies: {},
+        },
+        null,
+        2,
+      ),
+    );
+
     vfs.writeFileSync(
       "/app/layout.tsx",
       `export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div lang="en">
-      <div style={{ fontFamily: 'system-ui, sans-serif', margin: 0, padding: 16 }}>
-        <nav style={{ display: 'flex', gap: 16, marginBottom: 24 }}>
+    <html lang="en">
+      <body style={{ fontFamily: 'system-ui, sans-serif', margin: 0, padding: 16 }}>
+        <nav style={{ display: 'flex', gap: 16, marginBottom: "12px" }}>
           <a href="/">Home</a>
           <a href="/about">About</a>
         </nav>
         <main>{children}</main>
-      </div>
-    </div>
+      </body>
+    </html>
   );
 }
 `,
@@ -105,10 +143,11 @@ export default function Home() {
 `,
     );
 
+    const pkgManager = new PackageManager(vfs);
     const currentFile = get().currentFile;
     const content = vfs.readFileSync(currentFile, "utf8") as string;
 
-    set({ vfs, editorContent: content });
+    set({ vfs, pkgManager, editorContent: content });
   },
 
   loadFile: (path: string) => {
@@ -173,5 +212,39 @@ export default function Home() {
     iframeEl.src = serverUrl;
 
     set({ devServer, bridge, serverUrl });
+  },
+
+  installPackage: async (packageSpec: string) => {
+    const { pkgManager } = get();
+    if (!pkgManager) return;
+
+    set({ isInstalling: true, installMessage: `Installing ${packageSpec}...` });
+
+    try {
+      await pkgManager.install(packageSpec, {
+        save: true,
+        onProgress: (message: string) => {
+          set({ installMessage: message });
+        },
+      });
+
+      const installed = pkgManager.list();
+      set({
+        installedPackages: installed,
+        isInstalling: false,
+        installMessage: "",
+      });
+    } catch (err: any) {
+      set({
+        isInstalling: false,
+        installMessage: `Failed: ${err?.message || String(err)}`,
+      });
+    }
+  },
+
+  refreshInstalledPackages: () => {
+    const { pkgManager } = get();
+    if (!pkgManager) return;
+    set({ installedPackages: pkgManager.list() });
   },
 }));

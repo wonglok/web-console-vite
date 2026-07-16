@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useEditorStore } from '../stores/editorStore';
 import { FileTabs } from './FileTabs';
+import { DependenciesPanel } from './DependenciesPanel';
 
 export function EditorPanel() {
   const editorContent = useEditorStore((s) => s.editorContent);
@@ -50,6 +51,7 @@ export function EditorPanel() {
         style={{ tabSize: 2 }}
         spellCheck={false}
       />
+      <DependenciesPanel />
     </div>
   );
 }
