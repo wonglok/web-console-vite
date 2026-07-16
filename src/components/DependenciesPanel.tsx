@@ -4,6 +4,7 @@ import { useEditorStore } from "../stores/editorStore";
 export function DependenciesPanel() {
   const [input, setInput] = useState("");
   const installPackage = useEditorStore((s) => s.installPackage);
+  const installFromPackageJson = useEditorStore((s) => s.installFromPackageJson);
   const installedPackages = useEditorStore((s) => s.installedPackages);
   const isInstalling = useEditorStore((s) => s.isInstalling);
   const installMessage = useEditorStore((s) => s.installMessage);
@@ -70,6 +71,28 @@ export function DependenciesPanel() {
           }}
         >
           {isInstalling ? "Installing..." : "Install"}
+        </button>
+      </div>
+
+      {/* Install all from package.json */}
+      <div className="px-3 py-1.5">
+        <button
+          onClick={() => installFromPackageJson()}
+          disabled={isInstalling}
+          className="w-full px-2 py-1 text-xs font-medium transition-colors cursor-pointer disabled:opacity-40"
+          style={{
+            background: "var(--vscode-button-secondary-bg)",
+            color: "var(--vscode-fg)",
+          }}
+          onMouseEnter={(e) => {
+            if (!isInstalling)
+              e.currentTarget.style.background = "var(--vscode-button-secondary-hover)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "var(--vscode-button-secondary-bg)";
+          }}
+        >
+          {isInstalling ? "Installing..." : "Install package.json"}
         </button>
       </div>
 

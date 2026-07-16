@@ -52,6 +52,7 @@ interface EditorState {
   setCurrentFile: (path: string) => void;
   startPreview: (iframeEl: HTMLIFrameElement) => Promise<void>;
   installPackage: (packageSpec: string) => Promise<void>;
+  installFromPackageJson: () => Promise<void>;
   refreshInstalledPackages: () => void;
 }
 
@@ -140,6 +141,7 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
         currentFile: tabEntries.length > 0 ? tabEntries[0].path : firstFile,
         installedPackages: {},
       });
+      get().refreshInstalledPackages();
     } else {
       // Create new project with defaults
       vfs.mkdirSync("/app/about", { recursive: true });
@@ -212,6 +214,7 @@ export default function Home() {
       const content = vfs.readFileSync(currentFile, "utf8") as string;
 
       set({ vfs, pkgManager, editorContent: content });
+      get().refreshInstalledPackages();
     }
   },
 
@@ -320,12 +323,38 @@ export default function Home() {
         },
       });
 
-      const installed = pkgManager.list();
       set({
-        installedPackages: installed,
         isInstalling: false,
         installMessage: "",
       });
+      get().refreshInstalledPackages();
+    } catch (err: any) {
+      set({
+        isInstalling: false,
+        installMessage: `Failed: ${err?.message || String(err)}`,
+      });
+    }
+  },
+
+  installFromPackageJson: async () => {
+    const { pkgManager } = get();
+    if (!pkgManager) return;
+
+    set({ isInstalling: true, installMessage: "Installing all dependencies from package.json..." });
+
+    try {
+      await pkgManager.installFromPackageJson({
+        save: true,
+        onProgress: (message: string) => {
+          set({ installMessage: message });
+        },
+      });
+
+      set({
+        isInstalling: false,
+        installMessage: "",
+      });
+      get().refreshInstalledPackages();
     } catch (err: any) {
       set({
         isInstalling: false,
@@ -335,8 +364,22 @@ export default function Home() {
   },
 
   refreshInstalledPackages: () => {
-    const { pkgManager } = get();
-    if (!pkgManager) return;
-    set({ installedPackages: pkgManager.list() });
+    const { pkgManager, vfs } = get();
+    if (!pkgManager || !vfs) return;
+
+    // Merge: pkgManager.list() + dependencies from package.json
+    const packages: Record<string, string> = {};
+    try {
+      const raw = vfs.readFileSync("/package.json", "utf8") as string;
+      const pkgJson = JSON.parse(raw);
+      if (pkgJson.dependencies) {
+        Object.assign(packages, pkgJson.dependencies);
+      }
+    } catch {
+      // package.json may not exist yet
+    }
+    // pkgManager.list() takes precedence for version info
+    Object.assign(packages, pkgManager.list());
+    set({ installedPackages: packages });
   },
 }));

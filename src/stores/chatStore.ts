@@ -154,6 +154,18 @@ const TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "install_all_dependencies",
+      description:
+        "Install all dependencies listed in package.json. Use this after modifying package.json to add multiple packages at once.",
+      parameters: {
+        type: "object",
+        properties: {},
+      },
+    },
+  },
 ];
 
 // --- Helpers ---
@@ -339,6 +351,21 @@ async function executeTool(
         isPreviewLoading: false,
       });
       return `Preview started at ${serverUrl}`;
+    }
+
+    case "install_all_dependencies": {
+      if (!editor.pkgManager)
+        return "Error: Package manager not initialized.";
+      try {
+        await editor.pkgManager.installFromPackageJson({
+          save: true,
+          onProgress: () => {},
+        });
+        editor.refreshInstalledPackages();
+        return "Successfully installed all dependencies from package.json.";
+      } catch (err: any) {
+        return `Failed to install: ${err?.message || String(err)}`;
+      }
     }
 
     default:
