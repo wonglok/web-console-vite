@@ -10,7 +10,6 @@ export function PreviewPanel() {
   const serverUrl = useEditorStore((s) => s.serverUrl);
   const vfs = useEditorStore((s) => s.vfs);
 
-  // Keep the iframe element in the store so the chat agent can use it
   useEffect(() => {
     useEditorStore.setState({ previewIframe: iframeRef.current });
   }, []);
@@ -22,14 +21,31 @@ export function PreviewPanel() {
   }, [startPreview]);
 
   return (
-    <div className="flex flex-col h-full bg-white">
+    <div className="flex flex-col h-full" style={{ background: "#fff" }}>
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200 bg-gray-50 shrink-0">
+      <div
+        className="flex items-center justify-between px-3 h-9 shrink-0 select-none"
+        style={{
+          background: "var(--vscode-editor)",
+          borderBottom: "1px solid var(--vscode-border)",
+        }}
+      >
         <div className="flex items-center gap-2">
           <button
             onClick={handleStart}
             disabled={!vfs || isPreviewLoading}
-            className="px-4 py-1.5 text-sm font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+            className="px-3 py-1 text-xs font-medium transition-colors cursor-pointer disabled:opacity-40"
+            style={{
+              background: "var(--vscode-button-bg)",
+              color: "var(--vscode-button-fg)",
+            }}
+            onMouseEnter={(e) => {
+              if (!(!vfs || isPreviewLoading))
+                e.currentTarget.style.background = "var(--vscode-button-hover)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "var(--vscode-button-bg)";
+            }}
           >
             {isPreviewLoading
               ? "Starting..."
@@ -38,20 +54,20 @@ export function PreviewPanel() {
                 : "Start Preview"}
           </button>
           {serverUrl && (
-            <span className="text-xs text-gray-500 font-mono truncate max-w-75">
+            <span className="text-xs font-mono truncate max-w-60" style={{ color: "var(--vscode-fg-muted)" }}>
               {serverUrl}
             </span>
           )}
         </div>
         {hmrLogs.length > 0 && (
-          <div className="text-xs text-green-600 font-medium">
+          <div className="text-xs" style={{ color: "var(--vscode-success)" }}>
             HMR: {hmrLogs[hmrLogs.length - 1].path}
           </div>
         )}
       </div>
 
-      {/* Iframe or empty state */}
-      <div className="flex-1 relative">
+      {/* Iframe / empty state */}
+      <div className="flex-1 relative bg-white">
         <iframe
           ref={iframeRef}
           title="Preview"
@@ -59,12 +75,13 @@ export function PreviewPanel() {
           sandbox="allow-scripts allow-same-origin"
         />
         {!isPreviewRunning && !isPreviewLoading && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-50 text-gray-400 gap-3">
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3" style={{ background: "var(--vscode-editor)" }}>
             <svg
-              className="w-12 h-12 opacity-50"
+              className="w-12 h-12 opacity-40"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
+              style={{ color: "var(--vscode-fg-muted)" }}
             >
               <path
                 strokeLinecap="round"
@@ -79,14 +96,17 @@ export function PreviewPanel() {
                 d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
               />
             </svg>
-            <span className="text-sm">
+            <span className="text-sm" style={{ color: "var(--vscode-fg-muted)" }}>
               Click "Start Preview" to launch the Next.js preview
             </span>
           </div>
         )}
         {isPreviewLoading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-gray-50/80">
-            <div className="flex items-center gap-2 text-blue-600">
+          <div
+            className="absolute inset-0 flex items-center justify-center"
+            style={{ background: "rgba(30,30,30,0.7)" }}
+          >
+            <div className="flex items-center gap-2" style={{ color: "var(--vscode-accent)" }}>
               <svg
                 className="animate-spin w-5 h-5"
                 fill="none"

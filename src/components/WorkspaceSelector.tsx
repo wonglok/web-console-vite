@@ -29,7 +29,18 @@ export function WorkspaceSelector() {
       <button
         onClick={selectWorkspace}
         disabled={isLoading}
-        className="px-4 py-1.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-500 rounded-md transition-colors cursor-pointer disabled:opacity-50"
+        className="px-3 py-0.5 text-xs transition-colors disabled:opacity-50 cursor-pointer"
+        style={{
+          background: "var(--vscode-button-bg)",
+          color: "var(--vscode-button-fg)",
+        }}
+        onMouseEnter={(e) => {
+          if (!isLoading)
+            e.currentTarget.style.background = "var(--vscode-button-hover)";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = "var(--vscode-button-bg)";
+        }}
       >
         {isLoading ? "Opening..." : "Select Workspace"}
       </button>
@@ -37,11 +48,14 @@ export function WorkspaceSelector() {
   }
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-2 text-xs">
       {/* Workspace badge */}
-      <span className="text-xs text-gray-400 font-mono bg-gray-800 px-2 py-0.5 rounded flex items-center gap-2">
+      <span
+        className="flex items-center gap-1 px-2 py-0.5"
+        style={{ color: "var(--vscode-fg-muted)" }}
+      >
         <svg
-          className="w-3.5 h-3.5 text-gray-500"
+          className="w-3 h-3 opacity-60"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -56,11 +70,11 @@ export function WorkspaceSelector() {
         {workspaceName}
         <button
           onClick={selectWorkspace}
-          className="text-gray-500 hover:text-gray-300 ml-1"
+          className="opacity-50 hover:opacity-100 ml-0.5"
           title="Change workspace"
         >
           <svg
-            className="w-3 h-3"
+            className="w-2.5 h-2.5"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -79,23 +93,29 @@ export function WorkspaceSelector() {
       <div className="relative">
         <button
           onClick={() => setProjectDropdownOpen(!projectDropdownOpen)}
-          className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-200 bg-gray-800 hover:bg-gray-700 rounded-md transition-colors cursor-pointer border border-gray-700"
+          className="flex items-center gap-1.5 px-2 py-0.5 transition-colors"
+          style={{
+            color: "var(--vscode-fg)",
+            border: "1px solid var(--vscode-border)",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "var(--vscode-list-hover)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "transparent";
+          }}
         >
-          <span className="truncate max-w-[180px]">
+          <span className="truncate max-w-[140px]">
             {currentProject || "Select project"}
           </span>
           <svg
-            className="w-3.5 h-3.5 text-gray-500 shrink-0"
+            className="w-3 h-3 opacity-50 shrink-0"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
             strokeWidth={2}
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M19 9l-7 7-7-7"
-            />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
           </svg>
         </button>
 
@@ -105,21 +125,42 @@ export function WorkspaceSelector() {
               className="fixed inset-0 z-10"
               onClick={() => setProjectDropdownOpen(false)}
             />
-            <div className="absolute top-full mt-1 left-0 w-64 bg-gray-800 border border-gray-700 rounded-md shadow-xl z-20 overflow-hidden">
+            <div
+              className="absolute top-full mt-0.5 left-0 w-56 z-20 shadow-lg"
+              style={{
+                background: "var(--vscode-menu)",
+                color: "var(--vscode-menu-fg)",
+                border: "1px solid var(--vscode-border)",
+              }}
+            >
               {projects.length === 0 ? (
-                <div className="px-4 py-6 text-center text-sm text-gray-500">
-                  No projects yet. Create one to get started.
+                <div
+                  className="px-4 py-6 text-center"
+                  style={{ color: "var(--vscode-fg-dim)" }}
+                >
+                  No projects yet
                 </div>
               ) : (
-                <div className="max-h-60 overflow-y-auto">
+                <div className="max-h-56 overflow-y-auto">
                   {projects.map((name) => (
                     <div
                       key={name}
-                      className={`flex items-center justify-between px-4 py-2 text-sm hover:bg-gray-700 cursor-pointer ${
-                        currentProject === name
-                          ? "bg-blue-600/20 text-blue-400"
-                          : "text-gray-300"
-                      }`}
+                      className="flex items-center justify-between px-3 py-1 cursor-pointer transition-colors"
+                      style={{
+                        background:
+                          currentProject === name
+                            ? "var(--vscode-menu-hover)"
+                            : "transparent",
+                        color: "var(--vscode-menu-fg)",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background =
+                          "var(--vscode-menu-hover)";
+                      }}
+                      onMouseLeave={(e) => {
+                        if (currentProject !== name)
+                          e.currentTarget.style.background = "transparent";
+                      }}
                       onClick={() => {
                         openProject(name);
                         setProjectDropdownOpen(false);
@@ -138,11 +179,12 @@ export function WorkspaceSelector() {
                             setProjectDropdownOpen(false);
                           }
                         }}
-                        className="text-gray-500 hover:text-red-400 ml-2 shrink-0 cursor-pointer"
+                        className="opacity-40 hover:opacity-100 ml-2 shrink-0"
+                        style={{ color: "var(--vscode-close)" }}
                         title="Delete project"
                       >
                         <svg
-                          className="w-3.5 h-3.5"
+                          className="w-3 h-3"
                           fill="none"
                           viewBox="0 0 24 24"
                           stroke="currentColor"
@@ -164,9 +206,9 @@ export function WorkspaceSelector() {
         )}
       </div>
 
-      {/* New project button or dialog */}
+      {/* New project button */}
       {showNewProject ? (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <input
             type="text"
             value={newProjectName}
@@ -180,12 +222,21 @@ export function WorkspaceSelector() {
             }}
             placeholder="project-name"
             autoFocus
-            className="px-2 py-1 text-sm bg-gray-800 border border-gray-600 rounded text-gray-200 outline-none focus:border-blue-500 w-48"
+            className="px-2 py-0.5 text-xs outline-none w-36"
+            style={{
+              background: "var(--vscode-input-bg)",
+              color: "var(--vscode-input-fg)",
+              border: "1px solid var(--vscode-accent)",
+            }}
           />
           <button
             onClick={handleCreateProject}
             disabled={!newProjectName.trim()}
-            className="px-2 py-1 text-xs font-medium text-white bg-green-600 hover:bg-green-500 rounded transition-colors cursor-pointer disabled:opacity-50"
+            className="px-2 py-0.5 text-xs transition-colors disabled:opacity-40 cursor-pointer"
+            style={{
+              background: "var(--vscode-button-bg)",
+              color: "var(--vscode-button-fg)",
+            }}
           >
             Create
           </button>
@@ -194,7 +245,8 @@ export function WorkspaceSelector() {
               setShowNewProject(false);
               setNewProjectName("");
             }}
-            className="text-gray-500 hover:text-gray-300 text-sm cursor-pointer"
+            className="opacity-60 hover:opacity-100"
+            style={{ color: "var(--vscode-fg-muted)" }}
           >
             Cancel
           </button>
@@ -202,10 +254,22 @@ export function WorkspaceSelector() {
       ) : (
         <button
           onClick={() => setShowNewProject(true)}
-          className="px-3 py-1.5 text-xs font-medium text-gray-300 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-md transition-colors cursor-pointer flex items-center gap-1"
+          className="flex items-center gap-1 px-2 py-0.5 text-xs transition-colors cursor-pointer"
+          style={{
+            color: "var(--vscode-fg-muted)",
+            border: "1px solid var(--vscode-border)",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.color = "var(--vscode-fg)";
+            e.currentTarget.style.borderColor = "var(--vscode-fg-muted)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.color = "var(--vscode-fg-muted)";
+            e.currentTarget.style.borderColor = "var(--vscode-border)";
+          }}
         >
           <svg
-            className="w-3.5 h-3.5"
+            className="w-3 h-3"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -217,19 +281,20 @@ export function WorkspaceSelector() {
               d="M12 4v16m8-8H4"
             />
           </svg>
-          New Project
+          New
         </button>
       )}
 
-      {/* Close project button */}
+      {/* Close */}
       {currentProject && (
         <button
           onClick={closeProject}
-          className="text-gray-500 hover:text-gray-300 text-sm ml-2 cursor-pointer"
+          className="opacity-50 hover:opacity-100 ml-1"
+          style={{ color: "var(--vscode-fg-muted)" }}
           title="Close project"
         >
           <svg
-            className="w-4 h-4"
+            className="w-3.5 h-3.5"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"

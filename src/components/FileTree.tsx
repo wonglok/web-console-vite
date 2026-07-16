@@ -9,15 +9,19 @@ interface FileNode {
 }
 
 function buildTree(
-  entries: string[],
   readdirSync: (dir: string) => string[],
   statSync: (path: string) => { isDirectory(): boolean },
   dir = "/",
 ): FileNode[] {
   const nodes: FileNode[] = [];
-  const dirEntries = readdirSync(dir);
+  let entries: string[] = [];
+  try {
+    entries = readdirSync(dir);
+  } catch {
+    return [];
+  }
 
-  for (const name of dirEntries.sort()) {
+  for (const name of entries.sort()) {
     if (name === "node_modules" || name === ".next") continue;
     const path = dir === "/" ? `/${name}` : `${dir}/${name}`;
     try {
@@ -27,79 +31,20 @@ function buildTree(
           name,
           path,
           type: "directory",
-          children: buildTree(entries, readdirSync, statSync, path),
+          children: buildTree(readdirSync, statSync, path),
         });
       } else {
         nodes.push({ name, path, type: "file" });
       }
     } catch {
-      // skip entries that can't be stat'd
+      // skip
     }
   }
 
-  // Sort: directories first, then files, alphabetically within each group
   return nodes.sort((a, b) => {
     if (a.type !== b.type) return a.type === "directory" ? -1 : 1;
     return a.name.localeCompare(b.name);
   });
-}
-
-function fileLabel(name: string) {
-  const ext = name.split(".").pop()?.toLowerCase();
-  const colors: Record<string, string> = {
-    tsx: "text-cyan-400",
-    ts: "text-blue-400",
-    jsx: "text-yellow-400",
-    js: "text-yellow-300",
-    json: "text-green-400",
-    css: "text-purple-400",
-    html: "text-orange-400",
-    md: "text-gray-400",
-    svg: "text-pink-400",
-  };
-  return colors[ext || ""] || "text-gray-400";
-}
-
-function FileIcon({ name, type }: { name: string; type: "file" | "directory" }) {
-  if (type === "directory") {
-    return (
-      <svg
-        className="w-4 h-4 text-yellow-500 shrink-0"
-        fill="currentColor"
-        viewBox="0 0 24 24"
-      >
-        <path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" />
-      </svg>
-    );
-  }
-
-  const ext = name.split(".").pop()?.toLowerCase();
-  if (ext === "tsx" || ext === "jsx") {
-    return (
-      <svg className="w-4 h-4 text-cyan-400 shrink-0" fill="currentColor" viewBox="0 0 24 24">
-        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 7V3.5L18.5 9H13z" />
-      </svg>
-    );
-  }
-  if (ext === "json") {
-    return (
-      <svg className="w-4 h-4 text-green-400 shrink-0" fill="currentColor" viewBox="0 0 24 24">
-        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 7V3.5L18.5 9H13z" />
-      </svg>
-    );
-  }
-  if (ext === "css") {
-    return (
-      <svg className="w-4 h-4 text-purple-400 shrink-0" fill="currentColor" viewBox="0 0 24 24">
-        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 7V3.5L18.5 9H13z" />
-      </svg>
-    );
-  }
-  return (
-    <svg className="w-4 h-4 text-gray-400 shrink-0" fill="currentColor" viewBox="0 0 24 24">
-      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 7V3.5L18.5 9H13z" />
-    </svg>
-  );
 }
 
 function TreeNode({
@@ -120,11 +65,24 @@ function TreeNode({
       <div>
         <button
           onClick={() => setExpanded(!expanded)}
-          className="w-full flex items-center gap-1.5 px-2 py-1 text-left hover:bg-gray-800/50 transition-colors cursor-pointer"
-          style={{ paddingLeft: `${8 + depth * 14}px` }}
+          className="w-full flex items-center gap-0.5 h-6 text-left transition-colors"
+          style={{
+            paddingLeft: `${depth * 16}px`,
+            paddingRight: 8,
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "var(--vscode-list-hover)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "transparent";
+          }}
         >
           <svg
-            className={`w-3 h-3 text-gray-500 shrink-0 transition-transform ${expanded ? "rotate-90" : ""}`}
+            className="w-4 h-4 shrink-0 transition-transform"
+            style={{
+              transform: expanded ? "rotate(90deg)" : "rotate(0deg)",
+              color: "var(--vscode-fg-muted)",
+            }}
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -136,8 +94,9 @@ function TreeNode({
               d="M9 5l7 7-7 7"
             />
           </svg>
-          <FileIcon name={node.name} type="directory" />
-          <span className="text-xs text-gray-300 truncate">{node.name}</span>
+          <span className="text-xs truncate" style={{ color: "var(--vscode-fg)" }}>
+            {node.name}
+          </span>
         </button>
         {expanded &&
           node.children?.map((child) => (
@@ -153,23 +112,26 @@ function TreeNode({
     );
   }
 
-  // File node
   const isActive = currentFile === node.path;
   return (
     <button
       onClick={() => onSelect(node.path)}
-      className={`w-full flex items-center gap-1.5 px-2 py-1 text-left hover:bg-gray-800/50 transition-colors cursor-pointer ${
-        isActive ? "bg-blue-600/20" : ""
-      }`}
-      style={{ paddingLeft: `${8 + depth * 14}px` }}
+      className="w-full flex items-center gap-0.5 h-6 text-left transition-colors"
+      style={{
+        paddingLeft: `${depth * 16 + 16}px`,
+        paddingRight: 8,
+        background: isActive ? "var(--vscode-list-active)" : "transparent",
+        color: isActive ? "var(--vscode-list-active-fg)" : "var(--vscode-fg)",
+      }}
+      onMouseEnter={(e) => {
+        if (!isActive)
+          e.currentTarget.style.background = "var(--vscode-list-hover)";
+      }}
+      onMouseLeave={(e) => {
+        if (!isActive) e.currentTarget.style.background = "transparent";
+      }}
     >
-      <span className="w-3 shrink-0" />
-      <FileIcon name={node.name} type="file" />
-      <span
-        className={`text-xs truncate ${isActive ? "text-blue-300" : fileLabel(node.name)}`}
-      >
-        {node.name}
-      </span>
+      <span className="text-xs truncate">{node.name}</span>
     </button>
   );
 }
@@ -190,7 +152,6 @@ export function FileTree() {
   if (!vfs) return null;
 
   const tree = buildTree(
-    [],
     (dir: string) => vfs.readdirSync(dir),
     (path: string) => vfs.statSync(path),
   );
@@ -207,7 +168,10 @@ export function FileTree() {
         />
       ))}
       {tree.length === 0 && (
-        <div className="px-3 py-6 text-center text-xs text-gray-600">
+        <div
+          className="px-3 py-6 text-center text-xs"
+          style={{ color: "var(--vscode-fg-dim)" }}
+        >
           No files in project.
         </div>
       )}

@@ -319,6 +319,19 @@ export function EditorPanel() {
           saveFile();
         },
       });
+
+      // Bind Cmd+A / Ctrl+A to select all
+      editor.addAction({
+        id: "select-all-editor",
+        label: "Select All",
+        keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyA],
+        run: () => {
+          const model = editor.getModel();
+          if (model) {
+            editor.setSelection(model.getFullModelRange());
+          }
+        },
+      });
     },
     [updateEditorContent, saveFile],
   );
@@ -357,7 +370,7 @@ export function EditorPanel() {
   })();
 
   return (
-    <div className="flex flex-col h-full bg-gray-900">
+    <div className="flex flex-col h-full" style={{ background: "var(--vscode-editor)" }}>
       <FileTabs />
       <div className="flex-1">
         <Editor
@@ -384,7 +397,10 @@ export function EditorPanel() {
             padding: { top: 8 },
           }}
           loading={
-            <div className="flex items-center justify-center h-full bg-gray-900 text-gray-600 text-sm">
+            <div
+              className="flex items-center justify-center h-full text-sm"
+              style={{ background: "var(--vscode-editor)", color: "var(--vscode-fg-dim)" }}
+            >
               Loading editor...
             </div>
           }

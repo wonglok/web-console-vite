@@ -1,5 +1,63 @@
 @import "tailwindcss";
 
+:root {
+  /* VS Code Dark+ palette */
+  --vscode-bg: #1e1e1e;
+  --vscode-sidebar: #252526;
+  --vscode-sidebar-header: #252526;
+  --vscode-activity-bar: #333333;
+  --vscode-activity-bar-active: #ffffff;
+  --vscode-activity-bar-inactive: #858585;
+  --vscode-editor: #1e1e1e;
+  --vscode-tab-bg: #2d2d2d;
+  --vscode-tab-active-bg: #1e1e1e;
+  --vscode-tab-active-border: #007acc;
+  --vscode-tab-inactive-fg: #969696;
+  --vscode-tab-hover-bg: #2d2d2d;
+  --vscode-title-bar: #323233;
+  --vscode-status-bar: #007acc;
+  --vscode-status-bar-fg: #ffffff;
+  --vscode-status-bar-bg: #007acc;
+  --vscode-panel: #1e1e1e;
+  --vscode-panel-border: #3c3c3c;
+  --vscode-panel-title: #cccccc;
+  --vscode-input-bg: #3c3c3c;
+  --vscode-input-fg: #cccccc;
+  --vscode-input-border: #3c3c3c;
+  --vscode-input-focus-border: #007acc;
+  --vscode-fg: #cccccc;
+  --vscode-fg-muted: #858585;
+  --vscode-fg-dim: #6a6a6a;
+  --vscode-border: #3c3c3c;
+  --vscode-border-light: #474747;
+  --vscode-accent: #007acc;
+  --vscode-accent-hover: #1a8ad4;
+  --vscode-list-hover: #2a2d2e;
+  --vscode-list-active: #37373d;
+  --vscode-list-active-fg: #ffffff;
+  --vscode-scrollbar: #424242;
+  --vscode-scrollbar-hover: #4f4f4f;
+  --vscode-widget: #252526;
+  --vscode-widget-shadow: rgba(0, 0, 0, 0.36);
+  --vscode-badge: #4d4d4d;
+  --vscode-menu: #252526;
+  --vscode-menu-fg: #cccccc;
+  --vscode-menu-hover: #094771;
+  --vscode-link: #3794ff;
+  --vscode-error: #f48771;
+  --vscode-warning: #cca700;
+  --vscode-info: #75beff;
+  --vscode-success: #89d185;
+  --vscode-button-bg: #0e639c;
+  --vscode-button-fg: #ffffff;
+  --vscode-button-hover: #1177bb;
+  --vscode-button-secondary-bg: #3a3d41;
+  --vscode-button-secondary-hover: #45494e;
+
+  /* Red accents for close/delete */
+  --vscode-close: #f44747;
+}
+
 #root {
   width: 100%;
   max-width: 100%;
@@ -9,7 +67,40 @@
 
 body {
   margin: 0;
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI",
+    system-ui, Ubuntu, "Droid Sans", sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background: var(--vscode-bg);
+  color: var(--vscode-fg);
+}
+
+/* VS Code-style scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--vscode-scrollbar);
+  border-radius: 0;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--vscode-scrollbar-hover);
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Selection */
+::selection {
+  background: rgba(38, 79, 120, 0.6);
+}
+
+/* Focus ring */
+*:focus-visible {
+  outline: 1px solid var(--vscode-accent);
+  outline-offset: -1px;
 }

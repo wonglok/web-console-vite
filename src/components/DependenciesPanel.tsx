@@ -31,25 +31,45 @@ export function DependenciesPanel() {
 
   return (
     <div
-      className="flex flex-col border-t border-gray-700 bg-gray-900 shrink-0"
-      style={{ maxHeight: "40%" }}
+      className="flex flex-col shrink-0"
+      style={{
+        borderTop: "1px solid var(--vscode-border)",
+        background: "var(--vscode-sidebar)",
+        maxHeight: "40%",
+      }}
     >
       {/* Install input */}
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-800">
+      <div className="flex items-center gap-2 px-3 py-1.5">
         <input
           ref={inputRef}
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="npm package name (e.g. react@18)..."
+          placeholder="npm package (e.g. react@18)..."
           disabled={isInstalling}
-          className="flex-1 bg-gray-800 text-gray-200 text-xs rounded px-2 py-1.5 outline-none border border-gray-700 focus:border-blue-500 disabled:opacity-50 font-mono"
+          className="flex-1 text-xs px-2 py-1 outline-none font-mono"
+          style={{
+            background: "var(--vscode-input-bg)",
+            color: "var(--vscode-input-fg)",
+            border: "1px solid var(--vscode-input-border)",
+          }}
         />
         <button
           onClick={handleInstall}
           disabled={!input.trim() || isInstalling}
-          className="shrink-0 px-3 py-1.5 text-xs font-medium rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="shrink-0 px-2 py-1 text-xs font-medium transition-colors cursor-pointer disabled:opacity-40"
+          style={{
+            background: "var(--vscode-button-bg)",
+            color: "var(--vscode-button-fg)",
+          }}
+          onMouseEnter={(e) => {
+            if (!(!input.trim() || isInstalling))
+              e.currentTarget.style.background = "var(--vscode-button-hover)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "var(--vscode-button-bg)";
+          }}
         >
           {isInstalling ? "Installing..." : "Install"}
         </button>
@@ -58,37 +78,62 @@ export function DependenciesPanel() {
       {/* Install progress */}
       {installMessage && (
         <div
-          className={`px-3 py-1.5 text-xs font-mono border-b border-gray-800 ${
-            installMessage.startsWith("Failed")
-              ? "text-red-400 bg-red-900/20"
-              : "text-blue-400"
-          }`}
+          className="px-3 py-1 text-xs font-mono"
+          style={{
+            color: installMessage.startsWith("Failed")
+              ? "var(--vscode-error)"
+              : "var(--vscode-info)",
+            borderTop: "1px solid var(--vscode-border)",
+          }}
         >
           {installMessage}
         </div>
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between px-3 py-1.5 border-b border-gray-700/50">
-        <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">
-          Dependencies {entries.length > 0 && `(${entries.length})`}
-        </span>
+      <div
+        className="flex items-center px-3 py-1 text-xs font-semibold uppercase tracking-wider"
+        style={{
+          color: "var(--vscode-fg)",
+          borderTop: "1px solid var(--vscode-border)",
+        }}
+      >
+        Dependencies {entries.length > 0 && `(${entries.length})`}
       </div>
 
       {/* Package list */}
       <div className="overflow-y-auto">
         {entries.length === 0 ? (
-          <div className="px-3 py-4 text-xs text-gray-500 text-center">
+          <div
+            className="px-3 py-3 text-xs text-center"
+            style={{ color: "var(--vscode-fg-dim)" }}
+          >
             No packages installed yet
           </div>
         ) : (
           entries.map(([name, version]) => (
             <div
               key={name}
-              className="flex items-center justify-between px-3 py-1.5 hover:bg-gray-800/50 border-b border-gray-800/50 last:border-0"
+              className="flex items-center justify-between px-3 py-1 transition-colors"
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "var(--vscode-list-hover)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "transparent";
+              }}
             >
-              <span className="text-xs text-gray-300 font-mono">{name}</span>
-              <span className="text-xs text-gray-500 font-mono">{version}</span>
+              <span
+                className="text-xs font-mono"
+                style={{ color: "var(--vscode-fg)" }}
+              >
+                {name}
+              </span>
+              <span
+                className="text-xs font-mono"
+                style={{ color: "var(--vscode-fg-muted)" }}
+              >
+                {version}
+              </span>
             </div>
           ))
         )}
