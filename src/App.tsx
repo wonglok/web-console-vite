@@ -1,7 +1,10 @@
 import { EditorPanel } from './components/EditorPanel';
 import { PreviewPanel } from './components/PreviewPanel';
+import { useEditorStore } from './stores/editorStore';
 
 export default function App() {
+  const exportProject = useEditorStore((s) => s.exportProject);
+
   return (
     <div className="h-screen flex flex-col bg-gray-950">
       {/* Header */}
@@ -12,6 +15,14 @@ export default function App() {
         <span className="ml-3 text-xs text-gray-500 font-mono bg-gray-800 px-2 py-0.5 rounded">
           almostnode
         </span>
+        <div className="ml-auto">
+          <button
+            onClick={exportProject}
+            className="px-4 py-1.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-500 rounded-md transition-colors cursor-pointer"
+          >
+            Export ZIP
+          </button>
+        </div>
       </header>
 
       {/* Main two-panel layout */}

@@ -7,6 +7,7 @@ import {
   PackageManager,
 } from "almostnode";
 import type { ServerBridge } from "almostnode";
+import JSZip from "jszip";
 
 export interface FileTab {
   path: string;
@@ -50,6 +51,7 @@ interface EditorState {
   startPreview: (iframeEl: HTMLIFrameElement) => Promise<void>;
   installPackage: (packageSpec: string) => Promise<void>;
   refreshInstalledPackages: () => void;
+  exportProject: () => Promise<void>;
 }
 
 const defaultFiles: FileTab[] = [
@@ -246,5 +248,39 @@ export default function Home() {
     const { pkgManager } = get();
     if (!pkgManager) return;
     set({ installedPackages: pkgManager.list() });
+  },
+
+  exportProject: async () => {
+    const { vfs } = get();
+    if (!vfs) return;
+
+    const zip = new JSZip();
+
+    const walk = (dir: string) => {
+      const entries = vfs.readdirSync(dir);
+      for (const name of entries) {
+        const fullPath = dir === "/" ? `/${name}` : `${dir}/${name}`;
+        const stat = vfs.statSync(fullPath);
+        if (stat.isDirectory()) {
+          walk(fullPath);
+        } else {
+          const content = vfs.readFileSync(fullPath, "utf8") as string;
+          // Remove leading slash for zip paths
+          zip.file(fullPath.slice(1), content);
+        }
+      }
+    };
+
+    walk("/");
+
+    const blob = await zip.generateAsync({ type: "blob" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "project.zip";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   },
 }));
