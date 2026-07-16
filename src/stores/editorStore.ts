@@ -220,14 +220,14 @@ export function App() {
 
     const serverUrl = bridge.getServerUrl(5173) + "/";
 
-    devServer.on("hmr-update", (update: { path: string }) => {
-      set((state) => ({
-        hmrLogs: [
-          ...state.hmrLogs.slice(-9),
-          { path: update.path, timestamp: Date.now() },
-        ],
-      }));
-    });
+    // devServer.on("hmr-update", (update: { path: string }) => {
+    //   set((state) => ({
+    //     hmrLogs: [
+    //       ...state.hmrLogs.slice(-9),
+    //       { path: update.path, timestamp: Date.now() },
+    //     ],
+    //   }));
+    // });
 
     iframeEl.onload = () => {
       if (iframeEl.contentWindow) {
