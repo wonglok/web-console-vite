@@ -17,7 +17,12 @@ export function PreviewPanel() {
 
   // Auto-start preview when a project is opened
   useEffect(() => {
-    if (vfs && !isPreviewRunning && !isPreviewLoading && !autoStartedRef.current) {
+    if (
+      vfs &&
+      !isPreviewRunning &&
+      !isPreviewLoading &&
+      !autoStartedRef.current
+    ) {
       autoStartedRef.current = true;
       // Wait a tick for the iframe to be in the DOM
       requestAnimationFrame(() => {
@@ -71,7 +76,10 @@ export function PreviewPanel() {
                 : "Start Preview"}
           </button>
           {serverUrl && (
-            <span className="text-xs font-mono truncate max-w-60" style={{ color: "var(--vscode-fg-muted)" }}>
+            <span
+              className="text-xs font-mono truncate max-w-60"
+              style={{ color: "var(--vscode-fg-muted)" }}
+            >
               {serverUrl}
             </span>
           )}
@@ -92,7 +100,10 @@ export function PreviewPanel() {
           sandbox="allow-scripts allow-same-origin"
         />
         {!isPreviewRunning && !isPreviewLoading && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3" style={{ background: "var(--vscode-editor)" }}>
+          <div
+            className="absolute inset-0 flex flex-col items-center justify-center gap-3"
+            style={{ background: "var(--vscode-editor)" }}
+          >
             <svg
               className="w-12 h-12 opacity-40"
               fill="none"
@@ -113,7 +124,10 @@ export function PreviewPanel() {
                 d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
               />
             </svg>
-            <span className="text-sm" style={{ color: "var(--vscode-fg-muted)" }}>
+            <span
+              className="text-sm"
+              style={{ color: "var(--vscode-fg-muted)" }}
+            >
               Click "Start Preview" to launch the Next.js preview
             </span>
           </div>
@@ -123,7 +137,10 @@ export function PreviewPanel() {
             className="absolute inset-0 flex items-center justify-center"
             style={{ background: "rgba(30,30,30,0.7)" }}
           >
-            <div className="flex items-center gap-2" style={{ color: "var(--vscode-accent)" }}>
+            <div
+              className="flex items-center gap-2"
+              style={{ color: "var(--vscode-accent)" }}
+            >
               <svg
                 className="animate-spin w-5 h-5"
                 fill="none"
@@ -143,7 +160,7 @@ export function PreviewPanel() {
                   d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
                 />
               </svg>
-              <span className="text-sm font-medium">
+              <span className="text-sm font-medium text-white">
                 Starting Next.js dev server...
               </span>
             </div>
