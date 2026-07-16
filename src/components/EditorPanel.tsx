@@ -3,7 +3,6 @@ import Editor, { type OnMount } from "@monaco-editor/react";
 import type { editor } from "monaco-editor";
 import { useEditorStore } from "../stores/editorStore";
 import { FileTabs } from "./FileTabs";
-import { DependenciesPanel } from "./DependenciesPanel";
 
 // Comprehensive React + HTML DOM type declarations for Monaco TSX support
 const REACT_DTS = `
@@ -406,7 +405,6 @@ export function EditorPanel() {
           }
         />
       </div>
-      <DependenciesPanel />
     </div>
   );
 }

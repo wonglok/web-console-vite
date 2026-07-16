@@ -31,11 +31,9 @@ export function DependenciesPanel() {
 
   return (
     <div
-      className="flex flex-col shrink-0"
+      className="flex flex-col flex-1 overflow-y-auto"
       style={{
-        borderTop: "1px solid var(--vscode-border)",
         background: "var(--vscode-sidebar)",
-        maxHeight: "40%",
       }}
     >
       {/* Install input */}

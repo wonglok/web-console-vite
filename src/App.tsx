@@ -4,6 +4,7 @@ import { PreviewPanel } from "./components/PreviewPanel";
 import { WorkspaceSelector } from "./components/WorkspaceSelector";
 import { ChatPanel } from "./components/ChatPanel";
 import { FileTree } from "./components/FileTree";
+import { DependenciesPanel } from "./components/DependenciesPanel";
 import { useWorkspaceStore } from "./stores/workspaceStore";
 import { useEditorStore } from "./stores/editorStore";
 
@@ -138,10 +139,10 @@ function ActivityBar({
     },
     {
       id: "extensions",
-      label: "Extensions",
+      label: "Dependencies",
       icon: (
         <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M13.5 1.5L9.75 5.25 13.5 9l-3.75 3.75L6 9l3.75-3.75L6 1.5 2.25 5.25 9.75 12.75 13.5 9l3.75 3.75L21 9l-3.75-3.75L21 1.5 17.25 5.25 13.5 1.5z" />
+          <path d="M21 16.5c0 .38-.21.71-.53.88l-7.9 4.44c-.16.12-.36.18-.57.18-.21 0-.41-.06-.57-.18l-7.9-4.44A.991.991 0 0 1 3 16.5v-9c0-.38.21-.71.53-.88l7.9-4.44c.16-.12.36-.18.57-.18.21 0 .41.06.57.18l7.9 4.44c.32.17.53.5.53.88v9zM12 4.15L5 8.09v7.82l7 3.94 7-3.94V8.09l-7-3.94z" />
         </svg>
       ),
     },
@@ -246,6 +247,9 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [chatHeight, setChatHeight] = useState(250);
   const [activity, setActivity] = useState<string | null>("explorer");
+  const [sidebarTab, setSidebarTab] = useState<"explorer" | "dependencies">(
+    "explorer",
+  );
   const resizing = useRef(false);
   const editorColumnRef = useRef<HTMLDivElement>(null);
 
@@ -276,13 +280,16 @@ export default function App() {
     };
   }, []);
 
-  // Handle activity bar clicks
+  // Handle activity bar clicks — switch sidebar tabs
   const handleActivity = useCallback(
     (id: string) => {
       if (id === "explorer") {
         setSidebarOpen(true);
-      } else if (id === "search" || id === "extensions") {
-        // Toggle chat panel focus via expanding it
+        setSidebarTab("explorer");
+      } else if (id === "extensions") {
+        setSidebarOpen(true);
+        setSidebarTab("dependencies");
+      } else if (id === "search") {
         if (chatHeight < 200) setChatHeight(400);
       }
       setActivity(id);
@@ -327,7 +334,9 @@ export default function App() {
           Web Console
         </span>
         <span className="mx-2 opacity-40">—</span>
-        <span className="opacity-60">{currentProject || "no project open"}</span>
+        <span className="opacity-60">
+          {currentProject || "no project open"}
+        </span>
         <div className="flex-1" />
         <WorkspaceSelector />
       </div>
@@ -347,31 +356,7 @@ export default function App() {
                 background: "var(--vscode-sidebar)",
               }}
             >
-              {/* Sidebar header */}
-              <div
-                className="flex items-center justify-between px-4 h-9 shrink-0 text-xs font-semibold uppercase tracking-wider select-none"
-                style={{
-                  color: "var(--vscode-fg)",
-                  letterSpacing: "0.05em",
-                }}
-              >
-                <span>Explorer</span>
-                <button
-                  onClick={() => setSidebarOpen(false)}
-                  className="hover:opacity-70 transition-opacity"
-                  style={{ color: "var(--vscode-fg-muted)" }}
-                >
-                  <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="currentColor"
-                  >
-                    <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
-                  </svg>
-                </button>
-              </div>
-              <FileTree />
+              {sidebarTab === "explorer" ? <FileTree /> : <DependenciesPanel />}
             </div>
           )}
 
