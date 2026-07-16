@@ -118,52 +118,44 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
 `,
     );
 
-    // src/main.tsx — React bootstrap (App inlined to avoid cross-module default export issues)
+    // src/main.tsx — React bootstrap with JSX (App inlined)
     vfs.writeFileSync(
       "/src/main.tsx",
       `import React, { useState } from 'react';
 import ReactDOM from 'react-dom/client';
 
 function App() {
-  var _useState = useState(0);
-  var count = _useState[0];
-  var setCount = _useState[1];
+  const [count, setCount] = useState(0);
 
-  return React.createElement('div',
-    { style: { fontFamily: 'system-ui, sans-serif', padding: 32 } },
-    React.createElement('h1', null, 'Vite + React'),
-    React.createElement('p', null, 'Count: ', count),
-    React.createElement('button',
-      { onClick: function() { setCount(function(c) { return c + 1; }); } },
-      '+'
-    )
+  return (
+    <div style={{ fontFamily: 'system-ui, sans-serif', padding: 32 }}>
+      <h1>Vite + React</h1>
+      <p>Count: {count}</p>
+      <button onClick={() => setCount((c) => c + 1)}>+</button>
+    </div>
   );
 }
 
-var root = ReactDOM.createRoot(document.getElementById('root')!);
-root.render(React.createElement(App));
+const root = ReactDOM.createRoot(document.getElementById('root')!);
+root.render(<App />);
 `,
     );
 
-    // src/App.tsx — Same component, as a reference for the editor
+    // src/App.tsx — Editable component reference with JSX
     vfs.writeFileSync(
       "/src/App.tsx",
       `// Edit main.tsx for the active app. This file is a reference.
 import React, { useState } from 'react';
 
 export function App() {
-  var _useState = useState(0);
-  var count = _useState[0];
-  var setCount = _useState[1];
+  const [count, setCount] = useState(0);
 
-  return React.createElement('div',
-    { style: { fontFamily: 'system-ui, sans-serif', padding: 32 } },
-    React.createElement('h1', null, 'Vite + React'),
-    React.createElement('p', null, 'Count: ', count),
-    React.createElement('button',
-      { onClick: function() { setCount(function(c) { return c + 1; }); } },
-      '+'
-    )
+  return (
+    <div style={{ fontFamily: 'system-ui, sans-serif', padding: 32 }}>
+      <h1>Vite + React</h1>
+      <p>Count: {count}</p>
+      <button onClick={() => setCount((c) => c + 1)}>+</button>
+    </div>
   );
 }
 `,
