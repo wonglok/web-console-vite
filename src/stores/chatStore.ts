@@ -1,8 +1,6 @@
 import { create } from "zustand";
 import OpenAI from "openai";
-import {
-  useEditorStore,
-} from "./editorStore";
+import { useEditorStore } from "./editorStore";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import { getServerBridge, NextDevServer } from "almostnode";
 
