@@ -1,4 +1,4 @@
-import { useRef, useCallback } from "react";
+import { useRef, useCallback, useEffect } from "react";
 import { useEditorStore } from "../stores/editorStore";
 
 export function PreviewPanel() {
@@ -9,6 +9,11 @@ export function PreviewPanel() {
   const hmrLogs = useEditorStore((s) => s.hmrLogs);
   const serverUrl = useEditorStore((s) => s.serverUrl);
   const vfs = useEditorStore((s) => s.vfs);
+
+  // Keep the iframe element in the store so the chat agent can use it
+  useEffect(() => {
+    useEditorStore.setState({ previewIframe: iframeRef.current });
+  }, []);
 
   const handleStart = useCallback(() => {
     if (iframeRef.current) {

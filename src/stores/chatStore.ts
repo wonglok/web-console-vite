@@ -1,7 +1,10 @@
 import { create } from "zustand";
 import OpenAI from "openai";
-import { useEditorStore } from "./editorStore";
+import {
+  useEditorStore,
+} from "./editorStore";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
+import { getServerBridge, NextDevServer } from "almostnode";
 
 // --- Types ---
 
@@ -39,7 +42,7 @@ interface ChatState {
 
 // --- Constants ---
 
-const SYSTEM_PROMPT = `You are an expert coding assistant integrated into a web-based code editor. The user is building a Next.js application. You can read files, write files, and list directories in their project.
+const SYSTEM_PROMPT = `You are an expert coding assistant integrated into a web-based code editor. The user is building a Next.js application. You can read files, write files, list directories, install npm packages, and start the preview server.
 
 Guidelines:
 - Be concise and direct. Write code, not essays.
@@ -48,7 +51,9 @@ Guidelines:
 - Use TypeScript and React best practices.
 - The project uses Tailwind CSS v4 for styling.
 - When writing files, write the complete file content (not just diffs).
-- Default to App Router conventions (app/ directory).`;
+- Default to App Router conventions (app/ directory).
+- After installing new packages, you can start the preview to show the result.
+- After writing significant code, offer to start the preview so the user can see it.`;
 
 const TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
   {
@@ -109,6 +114,48 @@ const TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "install_package",
+      description:
+        "Install an npm package into the project using the in-browser package manager",
+      parameters: {
+        type: "object",
+        properties: {
+          package: {
+            type: "string",
+            description:
+              "Package name and optional version, e.g. 'react' or 'react@18.2.0'",
+          },
+        },
+        required: ["package"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "list_packages",
+      description: "List all installed npm packages and their versions",
+      parameters: {
+        type: "object",
+        properties: {},
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "start_preview",
+      description:
+        "Start or restart the Next.js dev server to preview the application in the browser panel",
+      parameters: {
+        type: "object",
+        properties: {},
+      },
+    },
+  },
 ];
 
 // --- Helpers ---
@@ -150,7 +197,10 @@ function getClient(apiKey: string): OpenAI {
 
 // --- Execute tools ---
 
-function executeTool(name: string, args: Record<string, unknown>): string {
+async function executeTool(
+  name: string,
+  args: Record<string, unknown>,
+): Promise<string> {
   const editor = useEditorStore.getState();
   const vfs = editor.vfs;
 
@@ -228,6 +278,69 @@ function executeTool(name: string, args: Record<string, unknown>): string {
       } catch {
         return `Error: Directory not found at "${path}"`;
       }
+    }
+
+    case "install_package": {
+      const pkgSpec = args.package as string;
+      if (!editor.pkgManager)
+        return "Error: Package manager not initialized. Open a project first.";
+
+      // Fire install — the store updates progress state
+      editor.installPackage(pkgSpec).catch(() => {
+        // errors reflected in store state
+      });
+      return `Installing ${pkgSpec}... Check the Dependencies panel for progress.`;
+    }
+
+    case "list_packages": {
+      if (!editor.pkgManager) return "No packages installed yet.";
+      const pkgs = editor.pkgManager.list();
+      const names = Object.keys(pkgs);
+      if (names.length === 0) return "No packages installed yet.";
+      return names.map((n) => `${n}@${pkgs[n]}`).join("\n");
+    }
+
+    case "start_preview": {
+      if (!vfs) return "Error: No project is open.";
+
+      // Stop existing server
+      const { devServer: existingServer } = editor;
+      if (existingServer) {
+        existingServer.stop();
+      }
+
+      const devServer = new NextDevServer(vfs, { port: 3000, root: "/" });
+      devServer.start();
+
+      const bridge = getServerBridge();
+      await bridge.initServiceWorker();
+      bridge.registerServer(devServer as any, 3000);
+
+      const serverUrl = bridge.getServerUrl(3000) + "/";
+
+      // Try to set HMR target if iframe is available
+      const iframe = editor.previewIframe;
+      if (iframe?.contentWindow) {
+        devServer.setHMRTarget(iframe.contentWindow);
+      }
+
+      devServer.on("hmr-update", (update: { path: string }) => {
+        useEditorStore.setState((s) => ({
+          hmrLogs: [
+            ...s.hmrLogs.slice(-9),
+            { path: update.path, timestamp: Date.now() },
+          ],
+        }));
+      });
+
+      useEditorStore.setState({
+        devServer,
+        bridge,
+        serverUrl,
+        isPreviewRunning: true,
+        isPreviewLoading: false,
+      });
+      return `Preview started at ${serverUrl}`;
     }
 
     default:
@@ -463,7 +576,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
           }
           set({ streamingToolCalls: [...streamingList] });
 
-          const result = executeTool(tc.name, parsedArgs);
+          const result = await executeTool(tc.name, parsedArgs);
 
           if (displayTc) {
             displayTc.result = result;

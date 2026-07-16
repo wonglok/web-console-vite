@@ -25,6 +25,7 @@ interface EditorState {
   bridge: ServerBridge | null;
   serverUrl: string;
   pkgManager: PackageManager | null;
+  previewIframe: HTMLIFrameElement | null;
 
   // File state
   files: FileTab[];
@@ -67,6 +68,7 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
   bridge: null,
   serverUrl: "",
   pkgManager: null,
+  previewIframe: null,
   files: defaultFiles,
   currentFile: defaultFiles[0].path,
   editorContent: "",

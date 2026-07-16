@@ -153,14 +153,23 @@ async function restoreHandle(): Promise<FileSystemDirectoryHandle | null> {
   }
 }
 
+function projectCodePath(name: string) {
+  return `projects/${name}/code`;
+}
+
 async function scanProjects(
   handle: FileSystemDirectoryHandle,
 ): Promise<string[]> {
   const projects: string[] = [];
-  for await (const [name, child] of handle.entries()) {
-    if (child.kind === "directory" && name !== ".DS_Store") {
-      projects.push(name);
+  try {
+    const projectsDir = await handle.getDirectoryHandle("projects");
+    for await (const [name, child] of projectsDir.entries()) {
+      if (child.kind === "directory" && name !== ".DS_Store") {
+        projects.push(name);
+      }
     }
+  } catch {
+    // No projects directory yet
   }
   return projects.sort();
 }
@@ -203,10 +212,9 @@ export const useWorkspaceStore = create<WorkspaceState>()((set, get) => ({
     const { workspaceHandle } = get();
     if (!workspaceHandle) return;
 
-    // Create project subdirectory
-    const projectHandle = await workspaceHandle.getDirectoryHandle(name, {
-      create: true,
-    });
+    // Create projects/:name/code/ structure
+    const codePath = projectCodePath(name);
+    const projectHandle = await ensureDir(workspaceHandle, codePath);
 
     // Initialize default Next.js project files in the subdirectory
     await writeFileToHandle(
@@ -293,9 +301,11 @@ export default function Home() {
     const { closeProject } = get();
     closeProject();
 
-    // Read all files from the project subdirectory
-    const projectHandle = await workspaceHandle.getDirectoryHandle(name);
-    const files = await readDirectoryRecursive(projectHandle);
+    // Read all files from projects/:name/code/
+    const projectsDir = await workspaceHandle.getDirectoryHandle("projects");
+    const projectDir = await projectsDir.getDirectoryHandle(name);
+    const codeDir = await projectDir.getDirectoryHandle("code");
+    const files = await readDirectoryRecursive(codeDir);
 
     // Initialize VFS with the loaded files
     const editorStore = useEditorStore.getState();
@@ -311,7 +321,8 @@ export default function Home() {
     const { workspaceHandle, currentProject } = get();
     if (!workspaceHandle) return;
 
-    await workspaceHandle.removeEntry(name, { recursive: true });
+    const projectsDir = await workspaceHandle.getDirectoryHandle("projects");
+    await projectsDir.removeEntry(name, { recursive: true });
 
     if (currentProject === name) {
       get().closeProject();
@@ -331,7 +342,7 @@ export default function Home() {
     if (!workspaceHandle) return;
     const text = await readFileFromHandle(
       workspaceHandle,
-      `chats/${projectName}.json`,
+      `projects/${projectName}/chat/chat.json`,
     );
     if (text) {
       try {
@@ -349,7 +360,7 @@ export default function Home() {
     const messages = useChatStore.getState().messages;
     await writeFileToHandle(
       workspaceHandle,
-      `chats/${projectName}.json`,
+      `projects/${projectName}/chat/chat.json`,
       JSON.stringify(messages, null, 2),
     );
   },
@@ -358,9 +369,9 @@ export default function Home() {
     const { workspaceHandle, currentProject } = get();
     if (!workspaceHandle || !currentProject) return;
 
-    const projectHandle =
-      await workspaceHandle.getDirectoryHandle(currentProject);
-    await writeFileToHandle(projectHandle, path.slice(1), content); // Remove leading /
+    const codePath = projectCodePath(currentProject);
+    const codeDir = await ensureDir(workspaceHandle, codePath);
+    await writeFileToHandle(codeDir, path.slice(1), content); // Remove leading /
   },
 }));
 
