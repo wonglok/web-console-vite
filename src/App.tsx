@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { EditorPanel } from "./components/EditorPanel";
 import { PreviewPanel } from "./components/PreviewPanel";
 import { WorkspaceSelector } from "./components/WorkspaceSelector";
+import { ChatPanel } from "./components/ChatPanel";
 import { useWorkspaceStore } from "./stores/workspaceStore";
 import { useEditorStore } from "./stores/editorStore";
 
@@ -82,6 +84,7 @@ function EmptyState() {
 export default function App() {
   const currentProject = useWorkspaceStore((s) => s.currentProject);
   const vfs = useEditorStore((s) => s.vfs);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const hasProject = !!(currentProject && vfs);
 
@@ -89,6 +92,27 @@ export default function App() {
     <div className="h-screen flex flex-col bg-gray-950">
       {/* Header */}
       <header className="flex items-center px-6 py-3 border-b border-gray-800 bg-gray-950 shrink-0 gap-3">
+        {hasProject && (
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="p-1 text-gray-500 hover:text-gray-300 rounded transition-colors cursor-pointer shrink-0"
+            title={sidebarOpen ? "Hide chat" : "Show chat"}
+          >
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"
+              />
+            </svg>
+          </button>
+        )}
         <h1 className="text-lg font-semibold text-white tracking-tight shrink-0">
           Editor + Next.js Preview
         </h1>
@@ -103,11 +127,14 @@ export default function App() {
       {/* Main content */}
       {hasProject ? (
         <div className="flex-1 flex overflow-hidden">
-          <div className="w-1/2 border-r border-gray-800">
-            <EditorPanel />
-          </div>
-          <div className="w-1/2">
-            <PreviewPanel />
+          {sidebarOpen && <ChatPanel />}
+          <div className="flex-1 flex overflow-hidden">
+            <div className="flex-1 border-r border-gray-800">
+              <EditorPanel />
+            </div>
+            <div className="flex-1">
+              <PreviewPanel />
+            </div>
           </div>
         </div>
       ) : (

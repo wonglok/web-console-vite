@@ -6,6 +6,13 @@ import tailwindcss from "@tailwindcss/vite";
 export default defineConfig({
   server: {
     allowedHosts: ["laptop.smile-with-jesus.com"],
+    proxy: {
+      "/api/deepseek": {
+        target: "https://api.deepseek.com",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/deepseek/, ""),
+      },
+    },
   },
   plugins: [react(), tailwindcss()],
 });

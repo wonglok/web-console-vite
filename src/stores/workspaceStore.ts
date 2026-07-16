@@ -70,18 +70,6 @@ async function writeFileToHandle(
   await writable.close();
 }
 
-async function removeDirectoryRecursive(
-  handle: FileSystemDirectoryHandle,
-): Promise<void> {
-  for await (const [name, child] of handle.entries()) {
-    if (child.kind === "directory") {
-      await handle.removeEntry(name, { recursive: true });
-    } else {
-      await handle.removeEntry(name);
-    }
-  }
-}
-
 const DB_NAME = "web-console-workspace";
 const DB_VERSION = 1;
 const STORE_NAME = "handles";
@@ -113,7 +101,7 @@ async function storeHandle(handle: FileSystemDirectoryHandle): Promise<void> {
 async function restoreHandle(): Promise<FileSystemDirectoryHandle | null> {
   try {
     const db = await openHandleDb();
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const tx = db.transaction(STORE_NAME, "readonly");
       const req = tx.objectStore(STORE_NAME).get("workspace");
       req.onsuccess = async () => {
