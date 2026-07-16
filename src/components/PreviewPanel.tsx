@@ -9,10 +9,27 @@ export function PreviewPanel() {
   const hmrLogs = useEditorStore((s) => s.hmrLogs);
   const serverUrl = useEditorStore((s) => s.serverUrl);
   const vfs = useEditorStore((s) => s.vfs);
+  const autoStartedRef = useRef(false);
 
   useEffect(() => {
     useEditorStore.setState({ previewIframe: iframeRef.current });
   }, []);
+
+  // Auto-start preview when a project is opened
+  useEffect(() => {
+    if (vfs && !isPreviewRunning && !isPreviewLoading && !autoStartedRef.current) {
+      autoStartedRef.current = true;
+      // Wait a tick for the iframe to be in the DOM
+      requestAnimationFrame(() => {
+        if (iframeRef.current) {
+          startPreview(iframeRef.current);
+        }
+      });
+    }
+    if (!vfs) {
+      autoStartedRef.current = false;
+    }
+  }, [vfs, isPreviewRunning, isPreviewLoading, startPreview]);
 
   const handleStart = useCallback(() => {
     if (iframeRef.current) {
