@@ -30,6 +30,7 @@ interface EditorState {
   files: FileTab[];
   currentFile: string;
   editorContent: string;
+  vfsVersion: number;
 
   // UI state
   isPreviewRunning: boolean;
@@ -69,6 +70,7 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
   files: defaultFiles,
   currentFile: defaultFiles[0].path,
   editorContent: "",
+  vfsVersion: 0,
   isPreviewRunning: false,
   isPreviewLoading: false,
   hmrLogs: [],

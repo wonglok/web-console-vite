@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { useEditorStore } from "./editorStore";
+import { useChatStore, type DisplayMessage } from "./chatStore";
 
 interface WorkspaceState {
   workspaceHandle: FileSystemDirectoryHandle | null;
@@ -17,6 +18,10 @@ interface WorkspaceState {
 
   // Helpers for editorStore to sync saves to disk
   syncFileToDisk: (path: string, content: string) => Promise<void>;
+
+  // Chat persistence
+  loadChat: (projectName: string) => Promise<void>;
+  saveChat: (projectName: string) => Promise<void>;
 }
 
 async function readDirectoryRecursive(
@@ -34,10 +39,7 @@ async function readDirectoryRecursive(
       name !== "node_modules" &&
       name !== ".next"
     ) {
-      Object.assign(
-        files,
-        await readDirectoryRecursive(handle, path + "/"),
-      );
+      Object.assign(files, await readDirectoryRecursive(handle, path + "/"));
     }
   }
   return files;
@@ -63,11 +65,32 @@ async function writeFileToHandle(
   const parts = filePath.split("/").filter(Boolean);
   const fileName = parts.pop()!;
   const dirHandle =
-    parts.length > 0 ? await ensureDir(rootHandle, parts.join("/")) : rootHandle;
+    parts.length > 0
+      ? await ensureDir(rootHandle, parts.join("/"))
+      : rootHandle;
   const fileHandle = await dirHandle.getFileHandle(fileName, { create: true });
   const writable = await fileHandle.createWritable();
   await writable.write(content);
   await writable.close();
+}
+
+async function readFileFromHandle(
+  rootHandle: FileSystemDirectoryHandle,
+  filePath: string,
+): Promise<string | null> {
+  try {
+    const parts = filePath.split("/").filter(Boolean);
+    const fileName = parts.pop()!;
+    let current = rootHandle;
+    for (const part of parts) {
+      current = await current.getDirectoryHandle(part);
+    }
+    const fileHandle = await current.getFileHandle(fileName);
+    const file = await fileHandle.getFile();
+    return await file.text();
+  } catch {
+    return null;
+  }
 }
 
 const DB_NAME = "web-console-workspace";
@@ -199,7 +222,9 @@ export const useWorkspaceStore = create<WorkspaceState>()((set, get) => ({
             build: "next build",
             start: "next start",
           },
-          dependencies: {},
+          dependencies: {
+            next: "latest",
+          },
         },
         null,
         2,
@@ -276,6 +301,9 @@ export default function Home() {
     const editorStore = useEditorStore.getState();
     editorStore.initVfs(files);
 
+    // Load chat history for this project
+    await get().loadChat(name);
+
     set({ currentProject: name, isLoading: false });
   },
 
@@ -296,6 +324,34 @@ export default function Home() {
     const editorStore = useEditorStore.getState();
     editorStore.resetProject();
     set({ currentProject: null });
+  },
+
+  loadChat: async (projectName: string) => {
+    const { workspaceHandle } = get();
+    if (!workspaceHandle) return;
+    const text = await readFileFromHandle(
+      workspaceHandle,
+      `chats/${projectName}.json`,
+    );
+    if (text) {
+      try {
+        const messages = JSON.parse(text) as DisplayMessage[];
+        useChatStore.getState().loadMessages(messages);
+      } catch {
+        // corrupt file, ignore
+      }
+    }
+  },
+
+  saveChat: async (projectName: string) => {
+    const { workspaceHandle } = get();
+    if (!workspaceHandle) return;
+    const messages = useChatStore.getState().messages;
+    await writeFileToHandle(
+      workspaceHandle,
+      `chats/${projectName}.json`,
+      JSON.stringify(messages, null, 2),
+    );
   },
 
   syncFileToDisk: async (path: string, content: string) => {

@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { EditorPanel } from "./components/EditorPanel";
 import { PreviewPanel } from "./components/PreviewPanel";
 import { WorkspaceSelector } from "./components/WorkspaceSelector";
 import { ChatPanel } from "./components/ChatPanel";
+import { FileTree } from "./components/FileTree";
 import { useWorkspaceStore } from "./stores/workspaceStore";
 import { useEditorStore } from "./stores/editorStore";
 
@@ -85,8 +86,36 @@ export default function App() {
   const currentProject = useWorkspaceStore((s) => s.currentProject);
   const vfs = useEditorStore((s) => s.vfs);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [chatHeight, setChatHeight] = useState(288);
+  const resizing = useRef(false);
+  const editorColumnRef = useRef<HTMLDivElement>(null);
 
   const hasProject = !!(currentProject && vfs);
+
+  const onMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    resizing.current = true;
+  }, []);
+
+  useEffect(() => {
+    const onMouseMove = (e: MouseEvent) => {
+      if (!resizing.current || !editorColumnRef.current) return;
+      const rect = editorColumnRef.current.getBoundingClientRect();
+      const h = rect.bottom - e.clientY;
+      setChatHeight(Math.max(120, Math.min(h, rect.height * 0.7)));
+    };
+    const onMouseUp = () => {
+      resizing.current = false;
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onMouseUp);
+    return () => {
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", onMouseUp);
+    };
+  }, []);
 
   return (
     <div className="h-screen flex flex-col bg-gray-950">
@@ -96,7 +125,7 @@ export default function App() {
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className="p-1 text-gray-500 hover:text-gray-300 rounded transition-colors cursor-pointer shrink-0"
-            title={sidebarOpen ? "Hide chat" : "Show chat"}
+            title={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
           >
             <svg
               className="w-5 h-5"
@@ -127,10 +156,32 @@ export default function App() {
       {/* Main content */}
       {hasProject ? (
         <div className="flex-1 flex overflow-hidden">
-          {sidebarOpen && <ChatPanel />}
+          {/* Left sidebar: File tree */}
+          {sidebarOpen && (
+            <div className="h-full flex flex-col bg-gray-950 border-r border-gray-800 w-64 shrink-0">
+              <div className="px-3 py-2 border-b border-gray-800 shrink-0">
+                <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  Files
+                </span>
+              </div>
+              <FileTree />
+            </div>
+          )}
+
+          {/* Center: Editor + Chat, Right: Preview */}
           <div className="flex-1 flex overflow-hidden">
-            <div className="flex-1 border-r border-gray-800">
-              <EditorPanel />
+            <div ref={editorColumnRef} className="flex-1 flex flex-col border-r border-gray-800">
+              <div className="flex-1 overflow-hidden">
+                <EditorPanel />
+              </div>
+              {/* Drag handle */}
+              <div
+                onMouseDown={onMouseDown}
+                className="h-1 bg-gray-800 hover:bg-blue-500 cursor-row-resize shrink-0 transition-colors"
+              />
+              <div className="border-t border-gray-800 shrink-0" style={{ height: chatHeight }}>
+                <ChatPanel />
+              </div>
             </div>
             <div className="flex-1">
               <PreviewPanel />

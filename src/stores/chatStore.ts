@@ -32,6 +32,7 @@ interface ChatState {
 
   sendMessage: (content: string) => Promise<void>;
   clearChat: () => void;
+  loadMessages: (msgs: DisplayMessage[]) => void;
   setApiKey: (key: string) => void;
   setModel: (model: string) => void;
 }
@@ -132,9 +133,16 @@ function saveApiKey(key: string) {
   }
 }
 
+function persistChat() {
+  import("./workspaceStore").then(({ useWorkspaceStore }) => {
+    const p = useWorkspaceStore.getState().currentProject;
+    if (p) useWorkspaceStore.getState().saveChat(p);
+  });
+}
+
 function getClient(apiKey: string): OpenAI {
   return new OpenAI({
-    baseURL: "/api/deepseek/v1",
+    baseURL: `https://api.deepseek.com`,
     apiKey,
     dangerouslyAllowBrowser: true,
   });
@@ -192,7 +200,10 @@ function executeTool(name: string, args: Record<string, unknown>): string {
         useWorkspaceStore.getState().syncFileToDisk(path, content);
       });
 
-      useEditorStore.setState({ files: newFiles });
+      useEditorStore.setState({
+        files: newFiles,
+        vfsVersion: useEditorStore.getState().vfsVersion + 1,
+      });
 
       return `Successfully wrote ${path}`;
     }
@@ -251,6 +262,15 @@ export const useChatStore = create<ChatState>()((set, get) => ({
       streamingText: "",
       streamingToolCalls: [],
     });
+    // Persist empty chat
+    import("./workspaceStore").then(({ useWorkspaceStore }) => {
+      const p = useWorkspaceStore.getState().currentProject;
+      if (p) useWorkspaceStore.getState().saveChat(p);
+    });
+  },
+
+  loadMessages: (msgs: DisplayMessage[]) => {
+    set({ messages: msgs });
   },
 
   sendMessage: async (content: string) => {
@@ -420,6 +440,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
             streamingText: "",
             streamingToolCalls: [],
           });
+          persistChat();
           return;
         }
 
@@ -511,6 +532,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
         streamingText: "",
         streamingToolCalls: [],
       });
+      persistChat();
     } catch (err) {
       set((s) => ({
         isLoading: false,
@@ -526,6 +548,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
           },
         ],
       }));
+      persistChat();
     }
   },
 }));
