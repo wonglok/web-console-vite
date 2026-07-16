@@ -75,7 +75,7 @@ export function PreviewPanel() {
               />
             </svg>
             <span className="text-sm">
-              Click "Start Preview" to launch the Next.js preview
+              Click "Start Preview" to launch the Vite preview
             </span>
           </div>
         )}
@@ -102,7 +102,7 @@ export function PreviewPanel() {
                 />
               </svg>
               <span className="text-sm font-medium">
-                Starting Next.js dev server...
+                Starting Vite dev server...
               </span>
             </div>
           </div>

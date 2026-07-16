@@ -3,7 +3,7 @@ import { create } from "zustand";
 import {
   VirtualFS,
   getServerBridge,
-  NextDevServer,
+  ViteDevServer,
   PackageManager,
 } from "almostnode";
 import type { ServerBridge } from "almostnode";
@@ -21,7 +21,7 @@ interface HmrLog {
 interface EditorState {
   // Core almostnode instances
   vfs: VirtualFS | null;
-  devServer: NextDevServer | null;
+  devServer: ViteDevServer | null;
   bridge: ServerBridge | null;
   serverUrl: string;
   pkgManager: PackageManager | null;
@@ -53,9 +53,9 @@ interface EditorState {
 }
 
 const defaultFiles: FileTab[] = [
-  { path: "/app/page.tsx", label: "page.tsx" },
-  { path: "/app/layout.tsx", label: "layout.tsx" },
-  { path: "/app/about/page.tsx", label: "about/page.tsx" },
+  { path: "/src/App.tsx", label: "App.tsx" },
+  { path: "/src/main.tsx", label: "main.tsx" },
+  { path: "/index.html", label: "index.html" },
   { path: "/package.json", label: "package.json" },
 ];
 
@@ -77,20 +77,21 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
 
   initVfs: () => {
     const vfs = new VirtualFS();
-    vfs.mkdirSync("/app/about", { recursive: true });
+    vfs.mkdirSync("/src", { recursive: true });
 
     // package.json for dependency tracking
     vfs.writeFileSync(
       "/package.json",
       JSON.stringify(
         {
-          name: "my-nextjs-app",
+          name: "my-vite-app",
           version: "1.0.0",
           private: true,
+          type: "module",
           scripts: {
-            dev: "next dev",
-            build: "next build",
-            start: "next start",
+            dev: "vite",
+            build: "vite build",
+            preview: "vite preview",
           },
           dependencies: {},
         },
@@ -99,46 +100,71 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
       ),
     );
 
+    // index.html — Vite entry point
     vfs.writeFileSync(
-      "/app/layout.tsx",
-      `export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <html lang="en">
-      <body style={{ fontFamily: 'system-ui, sans-serif', margin: 0, padding: 16 }}>
-        <nav style={{ display: 'flex', gap: 16, marginBottom: "12px" }}>
-          <a href="/">Home</a>
-          <a href="/about">About</a>
-        </nav>
-        <main>{children}</main>
-      </body>
-    </html>
-  );
-}
+      "/index.html",
+      `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vite App</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
 `,
     );
 
+    // src/main.tsx — React bootstrap (App inlined to avoid cross-module default export issues)
     vfs.writeFileSync(
-      "/app/page.tsx",
-      `'use client';
-import { useState } from 'react';
+      "/src/main.tsx",
+      `import React, { useState } from 'react';
+import ReactDOM from 'react-dom/client';
 
-export default function Home() {
-  const [count, setCount] = useState(0);
-  return (
-    <div>
-      <h1>Welcome!</h1>
-      <p>Count: {count}</p>
-      <button onClick={() => setCount(c => c + 1)}>+</button>
-    </div>
+function App() {
+  var _useState = useState(0);
+  var count = _useState[0];
+  var setCount = _useState[1];
+
+  return React.createElement('div',
+    { style: { fontFamily: 'system-ui, sans-serif', padding: 32 } },
+    React.createElement('h1', null, 'Vite + React'),
+    React.createElement('p', null, 'Count: ', count),
+    React.createElement('button',
+      { onClick: function() { setCount(function(c) { return c + 1; }); } },
+      '+'
+    )
   );
 }
+
+var root = ReactDOM.createRoot(document.getElementById('root')!);
+root.render(React.createElement(App));
 `,
     );
 
+    // src/App.tsx — Same component, as a reference for the editor
     vfs.writeFileSync(
-      "/app/about/page.tsx",
-      `export default function About() {
-  return <h1>About</h1>;
+      "/src/App.tsx",
+      `// Edit main.tsx for the active app. This file is a reference.
+import React, { useState } from 'react';
+
+export function App() {
+  var _useState = useState(0);
+  var count = _useState[0];
+  var setCount = _useState[1];
+
+  return React.createElement('div',
+    { style: { fontFamily: 'system-ui, sans-serif', padding: 32 } },
+    React.createElement('h1', null, 'Vite + React'),
+    React.createElement('p', null, 'Count: ', count),
+    React.createElement('button',
+      { onClick: function() { setCount(function(c) { return c + 1; }); } },
+      '+'
+    )
+  );
 }
 `,
     );
@@ -148,6 +174,17 @@ export default function Home() {
     const content = vfs.readFileSync(currentFile, "utf8") as string;
 
     set({ vfs, pkgManager, editorContent: content });
+
+    // Auto-install base packages needed by the Vite app
+    pkgManager
+      .install("react", { save: true })
+      .then(() => pkgManager.install("react-dom", { save: true }))
+      .then(() => {
+        set({ installedPackages: pkgManager.list() });
+      })
+      .catch(() => {
+        // Packages resolve from CDN at runtime if install fails
+      });
   },
 
   loadFile: (path: string) => {
@@ -161,7 +198,6 @@ export default function Home() {
     const { vfs, currentFile, editorContent } = get();
     if (!vfs) return;
     vfs.writeFileSync(currentFile, editorContent);
-    // HMR triggers automatically — devServer watches the VFS
   },
 
   updateEditorContent: (content: string) => {
@@ -179,19 +215,18 @@ export default function Home() {
 
     set({ isPreviewLoading: true });
 
-    // Stop existing dev server if running
     if (existingDevServer) {
       existingDevServer.stop();
     }
 
-    const devServer = new NextDevServer(vfs, { port: 3000, root: "/" });
+    const devServer = new ViteDevServer(vfs, { port: 5173 });
     devServer.start();
 
     const bridge = getServerBridge();
     await bridge.initServiceWorker();
-    bridge.registerServer(devServer as any, 3000);
+    bridge.registerServer(devServer as any, 5173);
 
-    const serverUrl = bridge.getServerUrl(3000) + "/";
+    const serverUrl = bridge.getServerUrl(5173) + "/";
 
     devServer.on("hmr-update", (update: { path: string }) => {
       set((state) => ({

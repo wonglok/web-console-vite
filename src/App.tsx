@@ -7,7 +7,7 @@ export default function App() {
       {/* Header */}
       <header className="flex items-center px-6 py-3 border-b border-gray-800 bg-gray-950 shrink-0">
         <h1 className="text-lg font-semibold text-white tracking-tight">
-          Editor + Next.js Preview
+          Editor + Vite Preview
         </h1>
         <span className="ml-3 text-xs text-gray-500 font-mono bg-gray-800 px-2 py-0.5 rounded">
           almostnode
