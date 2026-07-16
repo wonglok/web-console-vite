@@ -362,6 +362,13 @@ async function executeTool(
           onProgress: () => {},
         });
         editor.refreshInstalledPackages();
+
+        // Sync package.json to browser filesystem
+        const content = vfs.readFileSync("/package.json", "utf8") as string;
+        import("./workspaceStore").then(({ useWorkspaceStore }) => {
+          useWorkspaceStore.getState().syncFileToDisk("/package.json", content);
+        });
+
         return "Successfully installed all dependencies from package.json.";
       } catch (err: any) {
         return `Failed to install: ${err?.message || String(err)}`;

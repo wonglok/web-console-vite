@@ -63,6 +63,19 @@ const defaultFiles: FileTab[] = [
   { path: "/package.json", label: "package.json" },
 ];
 
+function syncPackageJsonToDisk() {
+  const { vfs } = useEditorStore.getState();
+  if (!vfs) return;
+  try {
+    const content = vfs.readFileSync("/package.json", "utf8") as string;
+    import("./workspaceStore").then(({ useWorkspaceStore }) => {
+      useWorkspaceStore.getState().syncFileToDisk("/package.json", content);
+    });
+  } catch {
+    // package.json may not exist
+  }
+}
+
 export const useEditorStore = create<EditorState>()((set, get) => ({
   vfs: null,
   devServer: null,
@@ -328,6 +341,7 @@ export default function Home() {
         installMessage: "",
       });
       get().refreshInstalledPackages();
+      syncPackageJsonToDisk();
     } catch (err: any) {
       set({
         isInstalling: false,
@@ -355,6 +369,7 @@ export default function Home() {
         installMessage: "",
       });
       get().refreshInstalledPackages();
+      syncPackageJsonToDisk();
     } catch (err: any) {
       set({
         isInstalling: false,
