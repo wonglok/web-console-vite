@@ -50,6 +50,10 @@ interface EditorState {
   saveFile: () => void;
   updateEditorContent: (content: string) => void;
   setCurrentFile: (path: string) => void;
+  createFile: (path: string, content?: string) => void;
+  createFolder: (path: string) => void;
+  renameEntry: (oldPath: string, newPath: string) => void;
+  deleteEntry: (path: string) => void;
   startPreview: (iframeEl: HTMLIFrameElement) => Promise<void>;
   installPackage: (packageSpec: string) => Promise<void>;
   installFromPackageJson: () => Promise<void>;
@@ -279,6 +283,70 @@ export default function Home() {
   setCurrentFile: (path: string) => {
     const { loadFile } = get();
     loadFile(path);
+  },
+
+  createFile: (path: string, content = "") => {
+    const { vfs } = get();
+    if (!vfs) return;
+    const parentDir = path.substring(0, path.lastIndexOf("/"));
+    if (parentDir) {
+      try { vfs.mkdirSync(parentDir, { recursive: true }); } catch { /* exists */ }
+    }
+    vfs.writeFileSync(path, content);
+    set((s) => ({ vfsVersion: s.vfsVersion + 1 }));
+  },
+
+  createFolder: (path: string) => {
+    const { vfs } = get();
+    if (!vfs) return;
+    try { vfs.mkdirSync(path, { recursive: true }); } catch { /* exists */ }
+    set((s) => ({ vfsVersion: s.vfsVersion + 1 }));
+  },
+
+  renameEntry: (oldPath: string, newPath: string) => {
+    const { vfs, currentFile, files } = get();
+    if (!vfs || oldPath === newPath) return;
+    try {
+      vfs.renameSync(oldPath, newPath);
+    } catch {
+      return;
+    }
+    set((s) => ({
+      vfsVersion: s.vfsVersion + 1,
+      currentFile:
+        currentFile.startsWith(oldPath + "/") || currentFile === oldPath
+          ? currentFile.replace(oldPath, newPath)
+          : s.currentFile,
+      files: files.map((f) =>
+        f.path.startsWith(oldPath + "/") || f.path === oldPath
+          ? { ...f, path: f.path.replace(oldPath, newPath), label: f.path.replace(oldPath, newPath).split("/").slice(2).join("/") || newPath.split("/").pop()! }
+          : f,
+      ),
+    }));
+  },
+
+  deleteEntry: (path: string) => {
+    const { vfs, currentFile, files } = get();
+    if (!vfs) return;
+    try {
+      const stat = vfs.statSync(path);
+      if (stat.isDirectory()) {
+        const entries = vfs.readdirSync(path);
+        for (const name of entries) {
+          get().deleteEntry(path === "/" ? `/${name}` : `${path}/${name}`);
+        }
+        vfs.rmdirSync(path);
+      } else {
+        vfs.unlinkSync(path);
+      }
+    } catch {
+      return;
+    }
+    set((s) => ({
+      vfsVersion: s.vfsVersion + 1,
+      currentFile: currentFile.startsWith(path + "/") || currentFile === path ? "" : s.currentFile,
+      files: files.filter((f) => !f.path.startsWith(path + "/") && f.path !== path),
+    }));
   },
 
   startPreview: async (iframeEl: HTMLIFrameElement) => {

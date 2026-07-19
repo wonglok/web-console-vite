@@ -93,6 +93,8 @@ async function readFileFromHandle(
   }
 }
 
+const LAST_PROJECT_KEY = "web-console-last-project";
+
 const DB_NAME = "web-console-workspace";
 const DB_VERSION = 1;
 const STORE_NAME = "handles";
@@ -314,6 +316,7 @@ export default function Home() {
     // Load chat history for this project
     await get().loadChat(name);
 
+    localStorage.setItem(LAST_PROJECT_KEY, name);
     set({ currentProject: name, isLoading: false });
   },
 
@@ -375,7 +378,7 @@ export default function Home() {
   },
 }));
 
-// Try to restore workspace on store initialization
+// Try to restore workspace and auto-open last project on store initialization
 (async () => {
   const handle = await restoreHandle();
   if (handle) {
@@ -385,5 +388,15 @@ export default function Home() {
       workspaceName: handle.name,
       projects,
     });
+
+    const lastProject = localStorage.getItem(LAST_PROJECT_KEY);
+    if (lastProject && projects.includes(lastProject)) {
+      try {
+        await useWorkspaceStore.getState().openProject(lastProject);
+      } catch {
+        // Project files may be corrupt — clear the saved preference
+        localStorage.removeItem(LAST_PROJECT_KEY);
+      }
+    }
   }
 })();
