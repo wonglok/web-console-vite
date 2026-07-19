@@ -1,4 +1,4 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, useEffect } from "react";
 import Editor, { type OnMount } from "@monaco-editor/react";
 import type { editor } from "monaco-editor";
 import { useEditorStore } from "../stores/editorStore";
@@ -280,7 +280,7 @@ export function EditorPanel() {
 
   function handleEditorWillMount(monaco: typeof import("monaco-editor")) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const ts = monaco.languages.typescript as any;
+    const ts = monaco.typescript as any;
 
     ts.typescriptDefaults.setCompilerOptions({
       target: ts.ScriptTarget.Latest,
@@ -295,9 +295,13 @@ export function EditorPanel() {
       lib: ["dom", "dom.iterable", "esnext"],
     });
 
+    ts.javascriptDefaults.setDiagnosticsOptions({
+      noSemanticValidation: true,
+      noSyntaxValidation: true,
+    });
     ts.typescriptDefaults.setDiagnosticsOptions({
-      noSemanticValidation: false,
-      noSyntaxValidation: false,
+      noSemanticValidation: true,
+      noSyntaxValidation: true,
     });
 
     // Provide React + HTML type declarations so Monaco can resolve JSX, React imports, and HTML elements
@@ -335,6 +339,25 @@ export function EditorPanel() {
     [updateEditorContent, saveFile],
   );
 
+  // Intercept Cmd+S / Ctrl+S at the document level to prevent browser "Save Page" dialog
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const mod = e.metaKey || e.ctrlKey;
+      if (mod && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        e.stopPropagation();
+        const editor = editorRef.current;
+        if (editor) {
+          const value = editor.getValue();
+          updateEditorContent(value);
+          saveFile();
+        }
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown, true);
+    return () => document.removeEventListener("keydown", handleKeyDown, true);
+  }, [updateEditorContent, saveFile]);
+
   const handleChange = useCallback(
     (value: string | undefined) => {
       if (value !== undefined) {
@@ -348,11 +371,11 @@ export function EditorPanel() {
     const ext = currentFile.split(".").pop();
     switch (ext) {
       case "tsx":
-        return "typescriptreact";
+        return "typescript";
       case "ts":
         return "typescript";
       case "jsx":
-        return "javascriptreact";
+        return "javascript";
       case "js":
         return "javascript";
       case "json":
@@ -369,7 +392,10 @@ export function EditorPanel() {
   })();
 
   return (
-    <div className="flex flex-col h-full" style={{ background: "var(--vscode-editor)" }}>
+    <div
+      className="flex flex-col h-full"
+      style={{ background: "var(--vscode-editor)" }}
+    >
       <FileTabs />
       <div className="flex-1">
         <Editor
@@ -398,7 +424,10 @@ export function EditorPanel() {
           loading={
             <div
               className="flex items-center justify-center h-full text-sm"
-              style={{ background: "var(--vscode-editor)", color: "var(--vscode-fg-dim)" }}
+              style={{
+                background: "var(--vscode-editor)",
+                color: "var(--vscode-fg-dim)",
+              }}
             >
               Loading editor...
             </div>
